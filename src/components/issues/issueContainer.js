@@ -5,7 +5,7 @@ import Issue from "./Issue";
 import Spinner from "../reusable/Spinner/spinner";
 
 class IssueContainer extends React.Component {
-  state = { issues: [], loading: false, showingIssues: [], offset: 0 };
+  state = { issues: [], loading: false, showingIssues: [], offset: 0, failRequest: false };
 
   async componentDidMount() {
     this.fetchIssues();
@@ -20,14 +20,22 @@ class IssueContainer extends React.Component {
       return { ...current, loading: true,offset: 0,showingIssues:[] };
     });
     let issues = await getIssues(this.props.project);
-    let {offset,showingIssues}= this.state;
-    while(offset<10 && offset<issues.length){
-      showingIssues.push(issues[offset]);
-      offset=offset+1;
+
+    if (issues) {
+      let {offset,showingIssues} = this.state;
+      while(offset<10 && offset<issues.length){
+        showingIssues.push(issues[offset]);
+        offset=offset+1;
+      }
+      this.setState(current => {
+        return { ...current, loading: false, issues, showingIssues, offset, failRequest: false };
+      });
+    } else {
+      // Request failed
+      this.setState(current => {
+        return { ...current, loading: false, issues: [], failRequest: true };
+      });
     }
-    this.setState(current => {
-      return { ...current, loading: false, issues, showingIssues, offset };
-    });
   }
   loadMoreIssues=()=>{
     let {offset,showingIssues,issues}= this.state;
@@ -46,6 +54,8 @@ class IssueContainer extends React.Component {
       <div>
         {this.state.loading ? (
           <Spinner />
+        ) : this.state.failRequest ? (
+          "Couldn't fetch the issues. Please try again."
         ) : this.state.issues.length === 0 ? (
           "No Good-First issues Found 😭"
         ) : 

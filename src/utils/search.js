@@ -19,9 +19,10 @@ const PAGE = 1; // page_number is 1-based index
 // MAX_RESULTS_ALLOWED = 1000
 // MAX_PAGE_ALLOWED = Math.ceil(MAX_RESULTS_POSSIBLE / PER_PAGE)
 const MAX_PAGE_ALLOWED = 34;
+const REQUEST_TIMEOUT_MS = 15000;
 
 function search(q) {
-  return octokit.search.issues(getSearchParams({ q })).then(({ data }) => {
+  return promiseWithTimeout(octokit.search.issues(getSearchParams({ q })), REQUEST_TIMEOUT_MS).then(({ data }) => {
     if (data.total_count > data.items.length) {
       const pageCount = Math.ceil(data.total_count / PER_PAGE);
       const lastPageAllowed =
@@ -38,7 +39,7 @@ function search(q) {
     } else {
       return transform(data);
     }
-  });
+  }).catch(err => console.warn(err));
 }
 
 function getSearchParams(searchParams) {
@@ -84,6 +85,17 @@ function transform(data) {
     }, []);
 
   return issues;
+}
+
+function promiseWithTimeout(promise, milliseconds) {
+  const timeout = new Promise((resolve, reject) =>
+    setTimeout(() =>
+      reject('Promise timeout reached.'), milliseconds));
+  
+  return Promise.race([
+    timeout, 
+    promise
+  ]);
 }
 
 module.exports = search;
